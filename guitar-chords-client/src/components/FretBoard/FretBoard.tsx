@@ -1,16 +1,27 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { GET_CHORDS } from '../../services/queries'
+import { useQuery } from '@apollo/react-hooks'
 import FingerPosition from '../FingerPosition'
+
 import * as styled from './FretBoard.style'
 
-interface IProps {
-    chord: any
-}
+const FretBoard = () => {
+    const { loading, error, data } = useQuery(GET_CHORDS)
+    const [ selectedChord, setSelectedChord ] = useState('')
 
-const FretBoard = ({ chord } : IProps) => {
+    useEffect(() => {
+        if (data) {
+            const initialChord = data.getChords[0]
+            setSelectedChord(initialChord)
+        }
+    }, [data])
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error :(</p>;
 
     const renderFrets = (chord : any) => {
         const pressedStrings = getPressedStringsIndices(chord.position)
-        const NUMBER_OF_FRETS = 24
+        const NUMBER_OF_FRETS = 24 // 4 Frets per string (6)
         const frets = Array(NUMBER_OF_FRETS).fill(0).map((_,i) => (
             <styled.Fret key={i}>
                 <FingerPosition 
@@ -27,7 +38,8 @@ const FretBoard = ({ chord } : IProps) => {
 
         if (position.E.fret > 0) {
             const { fret, finger } = position.E
-            const StringIndex = 0 + fret
+
+            const StringIndex = -1 + fret
             indicesArr.push({ index: StringIndex, finger })
         }
 
@@ -64,12 +76,27 @@ const FretBoard = ({ chord } : IProps) => {
         return indicesArr
     }
 
+    const handleOnChange = (event : any) => {
+        const selected = event.target.value
+        const foundChord = data.getChords.find((c: any) => c.root === selected)
+
+        setSelectedChord(foundChord)
+    }
+
     return (
-        <styled.FretBoardWrapper>
-           {
-               renderFrets(chord)
-           }
-        </styled.FretBoardWrapper>
+        <React.Fragment>
+            <label>Choose chord</label>
+
+            <select name="chords" defaultValue={selectedChord} onChange={handleOnChange}>
+                { data.getChords.map((chord: any) => (
+                    <option value={chord.root}>{`${chord.root} ${chord.quality}`}</option>
+                ))}
+            </select>
+           
+            <styled.FretBoardWrapper>
+                { selectedChord && renderFrets(selectedChord) }
+            </styled.FretBoardWrapper>
+        </React.Fragment>
     )
 }
 
